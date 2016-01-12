@@ -127,7 +127,7 @@ namespace mikity.ghComponents
             }
             public enum type
             {
-                fr, fx
+                fr, fxinforcediagram,fxinformdiagram
             }
             public type nodeType;
 
@@ -224,6 +224,8 @@ namespace mikity.ghComponents
         //ControlBox myControlBox = new ControlBox();
         List<Surface> _listSrf1;
         List<Surface> _listSrf2;
+        List<Curve> _listCrv;
+        List<Point3d> _listPnt;
         List<leaf> listLeaf;
         List<node> listNode;
         List<Line> listArrow;
@@ -260,6 +262,8 @@ namespace mikity.ghComponents
         {
             pManager.AddSurfaceParameter("listSurface1", "lstSrf1", "list of surfaces1", Grasshopper.Kernel.GH_ParamAccess.list);
             pManager.AddSurfaceParameter("listSurface2", "lstSrf2", "list of surfaces2", Grasshopper.Kernel.GH_ParamAccess.list);
+            pManager.AddCurveParameter("fixedBoundary", "listCrv", "list of boundary curves(force diagram!)", GH_ParamAccess.list);
+            pManager.AddPointParameter("fixedPoints", "listPnt", "list of fixed points (form diagram!)", GH_ParamAccess.list);
         }
         protected override void RegisterOutputParams(Grasshopper.Kernel.GH_Component.GH_OutputParamManager pManager)
         {
@@ -342,8 +346,12 @@ namespace mikity.ghComponents
             init();
             _listSrf1 = new List<Surface>();
             _listSrf2 = new List<Surface>();
+            _listCrv = new List<Curve>();
+            _listPnt = new List<Point3d>();
             if (!DA.GetDataList(0, _listSrf1)) { return; }
-            if (!DA.GetDataList(0, _listSrf2)) { return; }
+            if (!DA.GetDataList(1, _listSrf2)) { return; }
+            if (!DA.GetDataList(2, _listCrv)) { return; }
+            if (!DA.GetDataList(3, _listPnt)) { return; }
             listNode = new List<node>();
             listLeaf = new List<leaf>();
             for (int i = 0; i < _listSrf1.Count; i++)
@@ -398,6 +406,7 @@ namespace mikity.ghComponents
                         if (!flag)
                         {
                             var newNode = new node();
+                            newNode.nodeType = node.type.fr;
                             listNode.Add(newNode);
                             newNode.N = 1;
                             newNode.x = P.X;

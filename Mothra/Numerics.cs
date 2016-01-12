@@ -367,17 +367,17 @@ namespace mikity.ghComponents
         public void computeForceDiagram(List<leaf> _listLeaf,List<node> _listNode)
         {
             //variable settings
-            ShoNS.Array.SparseDoubleArray mat = new SparseDoubleArray(_listNode.Count * 3, _listNode.Count * 3);
-            ShoNS.Array.SparseDoubleArray F = new SparseDoubleArray(_listNode.Count * 3, 1);
-            ShoNS.Array.SparseDoubleArray xx = new SparseDoubleArray(_listNode.Count*3,1);
-            ShoNS.Array.SparseDoubleArray shift = new SparseDoubleArray(_listNode.Count*3, _listNode.Count*3);
+            ShoNS.Array.SparseDoubleArray mat = new SparseDoubleArray(_listNode.Count * 1, _listNode.Count * 2);
+            ShoNS.Array.SparseDoubleArray F = new SparseDoubleArray(_listNode.Count * 1, 1);
+            ShoNS.Array.SparseDoubleArray xx = new SparseDoubleArray(_listNode.Count * 1, 1);
+            ShoNS.Array.SparseDoubleArray shift = new SparseDoubleArray(_listNode.Count * 1, _listNode.Count * 2);
             for (int k = 0; k < _listNode.Count;k++ )
             {
                 var node = _listNode[k];
-                xx[k * 3 + 0, 0] = node.x;
-                xx[k * 3 + 1, 0] = node.y;
-                xx[k * 3 + 2, 0] = node.z;
-                if (node.nodeType == node.type.fx)
+                xx[k * 2 + 0, 0] = node.x;
+                xx[k * 2 + 1, 0] = node.y;
+                xx[k * 2 + 2, 0] = node.z;
+                if (node.nodeType == node.type.fxinforcediagram)
                 {
                     var leaf = node.shareL[0];
                     var indexU = node.numberLU[0];
@@ -385,9 +385,9 @@ namespace mikity.ghComponents
                     node.x = leaf.forceSrf.Points.GetControlPoint(indexU, indexV).Location.X;
                     node.y = leaf.forceSrf.Points.GetControlPoint(indexU, indexV).Location.Y;
                     node.z = 0;
-                    xx[k * 3 + 0, 0] = node.x;
-                    xx[k * 3 + 1, 0] = node.y;
-                    xx[k * 3 + 2, 0] = node.z;
+                    xx[k * 2 + 0, 0] = node.x;
+                    xx[k * 2 + 1, 0] = node.y;
+                    xx[k * 2 + 2, 0] = node.z;
                 }
             }
             
@@ -402,7 +402,7 @@ namespace mikity.ghComponents
             for(int i=0;i<_listNode.Count;i++)
             {
                 var node=_listNode[i];
-                if(node.nodeType==node.type.fx)
+                if(node.nodeType==node.type.fxinforcediagram)
                 {
                     L2--;
                     series[i]=L2;
@@ -414,9 +414,9 @@ namespace mikity.ghComponents
             }
             for (int i = 0; i < _listNode.Count; i++)
             {
-                shift[i * 3 + 0, series[i] * 3 + 0] = 1;
-                shift[i * 3 + 1, series[i] * 3 + 1] = 1;
-                shift[i * 3 + 2, series[i] * 3 + 2] = 1;
+                shift[i * 2 + 0, series[i] * 2 + 0] = 1;
+                shift[i * 2 + 1, series[i] * 2 + 1] = 1;
+                shift[i * 2 + 2, series[i] * 2 + 2] = 1;
                 //F[i * 3 + 2, 0] = -force;//force
             }
             /*
@@ -446,16 +446,16 @@ namespace mikity.ghComponents
                         {
                             for (int j = 0; j < tup.nNode; j++)
                             {
-                                for (int k = 0; k < 3; k++)
+                                for (int k = 0; k < 2; k++)
                                 {
-                                    for (int l = 0; l < 2; l++)
-                                    {
-                                        for (int m = 0; m < 2; m++)
-                                        {
-                                            var val = tup.B[l, m, i * 3 + k, j * 3 + k] * tup.SPK[l, m] * tup.refDv * tup.area; //tup.area is just a weight of Gauss integration
-                                            mat[leaf.globalIndex[tup.internalIndex[i]] * 3 + k, leaf.globalIndex[tup.internalIndex[j]] * 3 + k] += val;
-                                        }
-                                    }
+                                    var d0 = tup.d0;
+                                    var d1 = tup.d1;
+                                    var G1 = tup.Gi[0];
+                                    var G2 = tup.Gi[1];
+                                    var val0 = d0[j] * (d1[0][i] * G1[1] + d1[1][i] * G2[1]);
+                                    var val1 = d0[j] * (d1[0][i] * G1[0] + d1[1][i] * G2[0]);
+                                    mat[leaf.globalIndex[tup.internalIndex[i]], leaf.globalIndex[tup.internalIndex[j]] * 2 + 0] += val0;
+                                    mat[leaf.globalIndex[tup.internalIndex[i]], leaf.globalIndex[tup.internalIndex[j]] * 2 + 1] += val1;
                                 }
                             }
                         }
@@ -496,20 +496,20 @@ namespace mikity.ghComponents
             
             foreach (var leaf in _listLeaf)
             {
-                leaf.shellSrf = leaf.srf.Duplicate() as NurbsSurface;
+                leaf.shellSrf = leaf.forceSrf.Duplicate() as NurbsSurface;
                 for (int i = 0; i < leaf.nU; i++)
                 {
                     for (int j = 0; j < leaf.nV; j++)
                     {
                         var P = leaf.shellSrf.Points.GetControlPoint(i, j).Location;
-                        if (fix)
+                        /*if (fix)
                         {
                             leaf.shellSrf.Points.SetControlPoint(i, j, new ControlPoint(P.X, P.Y, exSol[leaf.globalIndex[i + j * leaf.nU] * 3 + 2, 0]));
                         }
-                        else
-                        {
-                            leaf.shellSrf.Points.SetControlPoint(i, j, new ControlPoint(exSol[leaf.globalIndex[i + j * leaf.nU] * 3 + 0, 0], exSol[leaf.globalIndex[i + j * leaf.nU] * 3 + 1, 0], exSol[leaf.globalIndex[i + j * leaf.nU] * 3 + 2, 0]));
-                        }
+                        else*/
+                        //{
+                        leaf.shellSrf.Points.SetControlPoint(i, j, new ControlPoint(exSol[leaf.globalIndex[i + j * leaf.nU] * 3 + 0, 0], exSol[leaf.globalIndex[i + j * leaf.nU] * 3 + 1, 0], exSol[leaf.globalIndex[i + j * leaf.nU] * 3 + 2, 0]));
+                        //}
                         //if you don't want to allow movements of x and y coordinates, use the following instead of the above. 
                         //leaf.shellSrf.Points.SetControlPoint(i, j, new ControlPoint(P.X, P.Y, exSol[leaf.globalIndex[i + j * leaf.nU] * 3 + 2, 0]));
                     }
