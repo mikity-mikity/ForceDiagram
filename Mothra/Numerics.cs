@@ -472,13 +472,22 @@ namespace mikity.ghComponents
             var D = newMat.GetSliceDeep(0, L1 * 3 - 1, L1 * 3, _listNode.Count * 3 - 1);
             var fx = newxx.GetSliceDeep(L1 * 3, _listNode.Count * 3 - 1, 0, 0);
             newF = newF.GetSliceDeep(0, L1 * 3 - 1, 0, 0);
-            var solve = new SparseLU(T);
+            var solve = new SparseSVD(T);
             var df = D * fx as SparseDoubleArray;
             var b = DoubleArray.From((-newF - df));
 
-            var sol=solve.Solve(b);
+            //var sol=solve.Solve(b);
             //var sol = inv * b;
-            //var sol = _V * _D * _U.T*b;
+            var _V = solve.V;
+            var _U = solve.U;
+            var _D = solve.D.CopyDeep();
+            for(int i = 0; i < _D.GetLength(0); i++)
+            {
+                var t = _D[i, i];
+                if (t < 0.0000000001) t = 0; else t = 1 / t;
+                _D[i, i] = t;
+            }
+            var sol = _V * _D * _U.T*b;
             var exSol = new SparseDoubleArray(sol.GetLength(0)+fx.GetLength(0),1);
             for (int i = 0; i < L1; i++)
             {
