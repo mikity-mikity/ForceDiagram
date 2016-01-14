@@ -374,10 +374,10 @@ namespace mikity.ghComponents
             for (int k = 0; k < _listNode.Count;k++ )
             {
                 var node = _listNode[k];
-                xx[k * 2 + 0, 0] = node.x;
-                xx[k * 2 + 1, 0] = node.y;
-                xx[k * 2 + 2, 0] = node.z;
-                if (node.nodeType == node.type.fxinforcediagram)
+                xx[k * 2 + 0, 0] = node.X;
+                xx[k * 2 + 1, 0] = node.Y;
+                xx[k * 2 + 2, 0] = 0;
+                if (node.forceNodeType == node.type.fx)
                 {
                     var leaf = node.shareL[0];
                     var indexU = node.numberLU[0];
@@ -402,7 +402,7 @@ namespace mikity.ghComponents
             for(int i=0;i<_listNode.Count;i++)
             {
                 var node=_listNode[i];
-                if(node.nodeType==node.type.fxinforcediagram)
+                if(node.forceNodeType==node.type.fx)
                 {
                     L2--;
                     series[i]=L2;

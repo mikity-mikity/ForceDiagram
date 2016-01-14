@@ -108,7 +108,7 @@ namespace mikity.ghComponents
         }
         public class node
         {
-            public double x,y,z;
+            public double x,y,z,X,Y,Z;
             public double airyHeight;
             public int N;
             public List<leaf> shareL = new List<leaf>();
@@ -124,11 +124,19 @@ namespace mikity.ghComponents
                 if ((dx * dx + dy * dy + dz * dz) < 0.0000001) return true;
                 return false;
             }
+            public bool compare2(Point3d P)
+            {
+                double dx = P.X - X;
+                double dy = P.Y - Y;
+                double dz = P.Z - Z;
+                if ((dx * dx + dy * dy + dz * dz) < 0.0000001) return true;
+                return false;
+            }
             public enum type
             {
-                fr, fxinforcediagram,fxinformdiagram
+                fr, fx
             }
-            public type nodeType;
+            public type formNodeType,forceNodeType;
 
             public node()
             {
@@ -136,7 +144,8 @@ namespace mikity.ghComponents
                 shareL.Clear();
                 numberLU.Clear();
                 numberLV.Clear();
-                nodeType = type.fr;
+                forceNodeType = type.fr;
+                formNodeType = type.fr;
             }
         }
 
@@ -388,6 +397,7 @@ namespace mikity.ghComponents
                     for (int i = 0; i < leaf.formSrf.Points.CountU; i++)
                     {
                         var P = leaf.formSrf.Points.GetControlPoint(i, j).Location;
+                        var Q = leaf.forceSrf.Points.GetControlPoint(i, j).Location;
                         bool flag = false;
                         foreach (var node in listNode)
                         {
@@ -405,17 +415,44 @@ namespace mikity.ghComponents
                         if (!flag)
                         {
                             var newNode = new node();
-                            newNode.nodeType = node.type.fr;
+                            newNode.forceNodeType = node.type.fr;
+                            newNode.formNodeType = node.type.fr;
                             listNode.Add(newNode);
                             newNode.N = 1;
                             newNode.x = P.X;
                             newNode.y = P.Y;
                             newNode.z = P.Z;
+                            newNode.X = Q.X;
+                            newNode.Y = Q.Y;
+                            newNode.Z = Q.Z;
+
                             newNode.shareL.Add(leaf);
                             newNode.numberLU.Add(i);
                             newNode.numberLV.Add(j);
                             leaf.globalIndex[i + j * leaf.nU] = listNode.IndexOf(newNode);
                         }
+                    }
+                }
+            }
+            //judge which node is fixed...
+            foreach (var node in listNode)
+            {
+                foreach (var _crv in _listCrv)
+                {
+                    var crv = _crv as NurbsCurve;
+                    for (int i = 0; i < crv.Points.Count; i++)
+                    {
+                        if (node.compare2(crv.Points[i].Location))
+                        {
+                            node.forceNodeType = node.type.fx;
+                        }
+                    }
+                }
+                foreach (var P in _listPnt)
+                {
+                    if (node.compare(P))
+                    {
+                        node.formNodeType = node.type.fx;
                     }
                 }
             }
