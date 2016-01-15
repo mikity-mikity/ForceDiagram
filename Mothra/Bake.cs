@@ -23,19 +23,18 @@ namespace mikity.ghComponents
             //a6.LayerIndex = 6;
             Rhino.DocObjects.ObjectAttributes a7 = att.Duplicate();
             //a7.LayerIndex = 7;
-            /*foreach (var leaf in listLeaf)
+            foreach (var leaf in listLeaf)
             {
-                var airySrf=leaf.airySrf.Duplicate() as Rhino.Geometry.NurbsSurface;
-                airySrf.Transform(zScale);
-                airySrf.Transform(zDown_airy);
-                Guid id = doc.Objects.AddSurface(airySrf, a2);
+                var srf=leaf.forceSrf.Duplicate() as Rhino.Geometry.NurbsSurface;
+                srf.Transform(zScale);
+                srf.Transform(zDown_airy);
+                Guid id = doc.Objects.AddSurface(srf, a2);
                 obj_ids.Add(id);
                 
-                var srf = leaf.shellSrf.Duplicate() as Rhino.Geometry.NurbsSurface;
-                //srf.Transform(zDown_eq);
-                id = doc.Objects.AddSurface(srf, a3);
-                obj_ids.Add(id);
-            }*/
+                //var srf = leaf.shellSrf.Duplicate() as Rhino.Geometry.NurbsSurface;
+                //id = doc.Objects.AddSurface(srf, a3);
+                //obj_ids.Add(id);
+            }
             /*foreach (var branch in listBranch)
             {
                 //var airyCrv=branch.airyCrv.Duplicate() as Rhino.Geometry.NurbsCurve;

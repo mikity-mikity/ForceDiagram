@@ -424,40 +424,40 @@ namespace mikity.ghComponents
             {
                 foreach (var tup in leaf.tuples)
                 {
-                    var det = tup.SPK[0, 0] * tup.SPK[1, 1] - tup.SPK[0, 1] * tup.SPK[0, 1];
-                    if (det > 0)
+                    //var det = tup.SPK[0, 0] * tup.SPK[1, 1] - tup.SPK[0, 1] * tup.SPK[0, 1];
+                    //if (det > 0)
+                    //{
+                    for (int i = 0; i < tup.nNode; i++)
                     {
-                        for (int i = 0; i < tup.nNode; i++)
+                        for (int j = 0; j < tup.nNode; j++)
                         {
-                            for (int j = 0; j < tup.nNode; j++)
+                            for (int k = 0; k < 2; k++)
                             {
-                                for (int k = 0; k < 2; k++)
-                                {
-                                    var d0 = tup.d0;
-                                    var d1 = tup.d1;
-                                    var G1 = tup.Gi[0];
-                                    var G2 = tup.Gi[1];
-                                    var val0 = d0[j] * (d1[0][i] * G1[1] + d1[1][i] * G2[1]);
-                                    var val1 = d0[j] * (d1[0][i] * G1[0] + d1[1][i] * G2[0]);
-                                    mat[leaf.globalIndex[tup.internalIndex[i]], leaf.globalIndex[tup.internalIndex[j]] * 2 + 0] += val0;
-                                    mat[leaf.globalIndex[tup.internalIndex[i]], leaf.globalIndex[tup.internalIndex[j]] * 2 + 1] += val1;
-                                }
+                                var d0 = tup.d0;
+                                var d1 = tup.d1;
+                                var G1 = tup.Gi[0];
+                                var G2 = tup.Gi[1];
+                                var val0 = d0[j] * (d1[0][i] * G1[1] + d1[1][i] * G2[1]);
+                                var val1 = -d0[j] * (d1[0][i] * G1[0] + d1[1][i] * G2[0]);
+                                mat[leaf.globalIndex[tup.internalIndex[i]], leaf.globalIndex[tup.internalIndex[j]] * 2 + 0] += val0 * tup.refDv * tup.area;
+                                mat[leaf.globalIndex[tup.internalIndex[i]], leaf.globalIndex[tup.internalIndex[j]] * 2 + 1] += val1 * tup.refDv * tup.area;
                             }
                         }
                     }
+                    //}
                 }
             }
             System.Windows.Forms.MessageBox.Show("3");
 
             //System.Windows.Forms.MessageBox.Show(max1.ToString() + ".-." + max2.ToString());
-            var newMat = (shift.T.Multiply(mat) as SparseDoubleArray).Multiply(shift) as SparseDoubleArray;
+            var newMat = (shift2.T.Multiply(mat) as SparseDoubleArray).Multiply(shift) as SparseDoubleArray;
             var newxx = shift.T.Multiply(xx) as SparseDoubleArray;
-            var newF = shift.T.Multiply(F) as SparseDoubleArray;
+            var newF = shift2.T.Multiply(F) as SparseDoubleArray;
 
-            var T = newMat.GetSliceDeep(0, L1 * 2 - 1, 0, L1 * 2 - 1);
-            var D = newMat.GetSliceDeep(0, L1 * 2 - 1, L1 * 2, _listNode.Count * 2 - 1);
+            var T = newMat.GetSliceDeep(0, L1 - 1, 0, L1 * 2 - 1);
+            var D = newMat.GetSliceDeep(0, L1 - 1, L1 * 2, _listNode.Count * 2 - 1);
             var fx = newxx.GetSliceDeep(L1 * 2, _listNode.Count * 2 - 1, 0, 0);
-            newF = newF.GetSliceDeep(0, L1 * 2 - 1, 0, 0);
+            newF = newF.GetSliceDeep(0, L1 - 1, 0, 0);
             var solve = new SparseSVD(T);
             var df = D * fx as SparseDoubleArray;
             var b = DoubleArray.From((-newF - df));
