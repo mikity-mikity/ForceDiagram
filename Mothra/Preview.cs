@@ -32,12 +32,12 @@ namespace mikity.ghComponents
             }
             foreach (var leaf in listLeaf)
             {
-                /*if (leaf.airySrf != null)
+                if (leaf.forceSrf != null)
                 {
-                    var srf = leaf.airySrf.Duplicate() as Rhino.Geometry.NurbsSurface;
+                    var srf = leaf.forceSrf.Duplicate() as Rhino.Geometry.NurbsSurface;
                     srf.Transform(zScale);
                     args.Display.DrawSurface(srf, System.Drawing.Color.Brown, 3);
-                }*/
+                }
             }
             foreach (var leaf in listLeaf)
             {

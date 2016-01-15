@@ -70,11 +70,11 @@ namespace mikity.ghComponents
         {
             base.AppendAdditionalMenuItems(menu);
             Menu_AppendCustomItem(menu, myControlPanel);
-            myControlPanel.buttonA.Click -= buttonA_Click;
+            //myControlPanel.buttonA.Click -= buttonA_Click;
             myControlPanel.buttonA.Click += buttonA_Click;
             //myControlPanel.resetButton.Click -= resetButton_Click;
             //myControlPanel.resetButton.Click += resetButton_Click;
-            Menu_AppendSeparator(menu);
+            //Menu_AppendSeparator(menu);
         }
 
         private void buttonA_Click(object sender, EventArgs e)
@@ -86,12 +86,12 @@ namespace mikity.ghComponents
                 cP.state = controlPanel._state.computingForceDiagram;
                 if (task == null)
                 {
-                    task = new Task(() => { computeF(); });
+                    task = new Task(() => { computeF(); obj.Enabled = true; this.ExpirePreview(true); });
                     task.Start();
                 }
                 if (task.IsCompleted)
                 {
-                    task = new Task(() => { computeF(); });
+                    task = new Task(() => { computeF(); obj.Enabled = true; this.ExpirePreview(true); });
                     task.Start();
                 }
                 obj.Enabled = false;
@@ -284,6 +284,8 @@ namespace mikity.ghComponents
         void computeF()
         {
             int globalNN = 2;
+            System.Windows.Forms.MessageBox.Show("A");
+
             foreach (var leaf in listLeaf)
             {
                 leaf.NN = globalNN * (leaf.uDdim) -2;
@@ -316,7 +318,7 @@ namespace mikity.ghComponents
                 x = new double[leaf.nU * leaf.nV, 3];
                 _x = new double[leaf.nU * leaf.nV, 3];
                 Nurbs2x(leaf.formSrf, x);
-                Nurbs2x(leaf.forceSrf, x);
+                Nurbs2x(leaf.forceSrf, _x);
                 leaf.myMasonry.setupNodesFromList(x);
                 leaf.myMasonry.computeGlobalCoord();
                 foreach (var e in leaf.myMasonry.elemList)
@@ -328,23 +330,10 @@ namespace mikity.ghComponents
                 {
                     leaf.myMasonry.elemList[tup.index].precompute(tup);
                 }
-                foreach (var tup in leaf.edgeTuples)
-                {
-                    leaf.myMasonry.elemList[tup.index].precompute(tup);
-                }
             }
+            System.Windows.Forms.MessageBox.Show("G");
             computeForceDiagram(listLeaf, listNode);
-            /*
-            //call mosek
-            if(listPnt.Count>0)
-                mosek1(listLeaf, listBranch, listSlice, listRange, listRangeOpen, listRangeLeaf,true, myControlBox.allow);
-            else
-                mosek1(listLeaf, listBranch, listSlice, listRange, listRangeOpen, listRangeLeaf,false, myControlBox.allow);
-            hodgeStar(listLeaf, listBranch, myControlBox.coeff, myControlBox.sScale);
-            foreach (var adj in myControlBox.listAdjusters)
-            {
-                adj.update();
-            }*/
+
             ready = true;
             this.ExpirePreview(true);
         }
@@ -456,6 +445,7 @@ namespace mikity.ghComponents
                     }
                 }
             }
+            myControlPanel.state = controlPanel._state.forceDiagramReady;
         }
     }
 }

@@ -369,14 +369,15 @@ namespace mikity.ghComponents
             //variable settings
             ShoNS.Array.SparseDoubleArray mat = new SparseDoubleArray(_listNode.Count * 1, _listNode.Count * 2);
             ShoNS.Array.SparseDoubleArray F = new SparseDoubleArray(_listNode.Count * 1, 1);
-            ShoNS.Array.SparseDoubleArray xx = new SparseDoubleArray(_listNode.Count * 1, 1);
-            ShoNS.Array.SparseDoubleArray shift = new SparseDoubleArray(_listNode.Count * 1, _listNode.Count * 2);
+            ShoNS.Array.SparseDoubleArray xx = new SparseDoubleArray(_listNode.Count * 2, 1);
+            ShoNS.Array.SparseDoubleArray shift = new SparseDoubleArray(_listNode.Count * 2, _listNode.Count * 2);
+            ShoNS.Array.SparseDoubleArray shift2 = new SparseDoubleArray(_listNode.Count * 1, _listNode.Count * 1);
+            System.Windows.Forms.MessageBox.Show("1");
             for (int k = 0; k < _listNode.Count;k++ )
             {
                 var node = _listNode[k];
                 xx[k * 2 + 0, 0] = node.X;
                 xx[k * 2 + 1, 0] = node.Y;
-                xx[k * 2 + 2, 0] = 0;
                 if (node.forceNodeType == node.type.fx)
                 {
                     var leaf = node.shareL[0];
@@ -384,10 +385,8 @@ namespace mikity.ghComponents
                     var indexV = node.numberLV[0];
                     node.x = leaf.forceSrf.Points.GetControlPoint(indexU, indexV).Location.X;
                     node.y = leaf.forceSrf.Points.GetControlPoint(indexU, indexV).Location.Y;
-                    node.z = 0;
                     xx[k * 2 + 0, 0] = node.x;
                     xx[k * 2 + 1, 0] = node.y;
-                    xx[k * 2 + 2, 0] = node.z;
                 }
             }
             
@@ -408,7 +407,7 @@ namespace mikity.ghComponents
                     series[i]=L2;
                 }else{
                     series[i]=L1;
-                    origin.Add(new Point3d(node.x, node.y, node.z));
+                    origin.Add(new Point3d(node.x, node.y, 0));
                     L1++;
                 }
             }
@@ -416,25 +415,11 @@ namespace mikity.ghComponents
             {
                 shift[i * 2 + 0, series[i] * 2 + 0] = 1;
                 shift[i * 2 + 1, series[i] * 2 + 1] = 1;
-                shift[i * 2 + 2, series[i] * 2 + 2] = 1;
                 //F[i * 3 + 2, 0] = -force;//force
+                shift2[i, series[i]] = 1;
             }
-            /*
-            foreach (var leaf in _listLeaf)
-            {
-                foreach (var tup in leaf.tuples)
-                {
-                    var d0=tup.d0;
-                    for(int i = 0; i < tup.nNode; i++)
-                    {
-                        int k = 2;
-                        var val = d0[i] * tup.refDv * tup.area*force;
-                        //GGSystem.Windows.Forms.MessageBox.Show(tup.eigenValues[0].ToString() + "," + tup.eigenValues[1].ToString());
-                        double factor = Math.Abs(Math.Max(tup.eigenValues[0], tup.eigenValues[1]));
-                        F[leaf.globalIndex[tup.internalIndex[i]] * 3 + k,0] -= val * Math.Pow(factor, exp);
-                    }
-                }
-            }*/
+            System.Windows.Forms.MessageBox.Show("2");
+
             foreach (var leaf in _listLeaf)
             {
                 foreach (var tup in leaf.tuples)
@@ -462,16 +447,17 @@ namespace mikity.ghComponents
                     }
                 }
             }
+            System.Windows.Forms.MessageBox.Show("3");
 
             //System.Windows.Forms.MessageBox.Show(max1.ToString() + ".-." + max2.ToString());
             var newMat = (shift.T.Multiply(mat) as SparseDoubleArray).Multiply(shift) as SparseDoubleArray;
             var newxx = shift.T.Multiply(xx) as SparseDoubleArray;
             var newF = shift.T.Multiply(F) as SparseDoubleArray;
 
-            var T = newMat.GetSliceDeep(0, L1 * 3 - 1, 0, L1 * 3 - 1);
-            var D = newMat.GetSliceDeep(0, L1 * 3 - 1, L1 * 3, _listNode.Count * 3 - 1);
-            var fx = newxx.GetSliceDeep(L1 * 3, _listNode.Count * 3 - 1, 0, 0);
-            newF = newF.GetSliceDeep(0, L1 * 3 - 1, 0, 0);
+            var T = newMat.GetSliceDeep(0, L1 * 2 - 1, 0, L1 * 2 - 1);
+            var D = newMat.GetSliceDeep(0, L1 * 2 - 1, L1 * 2, _listNode.Count * 2 - 1);
+            var fx = newxx.GetSliceDeep(L1 * 2, _listNode.Count * 2 - 1, 0, 0);
+            newF = newF.GetSliceDeep(0, L1 * 2 - 1, 0, 0);
             var solve = new SparseSVD(T);
             var df = D * fx as SparseDoubleArray;
             var b = DoubleArray.From((-newF - df));
@@ -491,33 +477,32 @@ namespace mikity.ghComponents
             var exSol = new SparseDoubleArray(sol.GetLength(0)+fx.GetLength(0),1);
             for (int i = 0; i < L1; i++)
             {
-                exSol[i * 3 + 0, 0] = sol[i * 3 + 0, 0];
-                exSol[i * 3 + 1, 0] = sol[i * 3 + 1, 0];
-                exSol[i * 3 + 2, 0] = sol[i * 3 + 2, 0];
+                exSol[i * 2 + 0, 0] = sol[i * 2 + 0, 0];
+                exSol[i * 2 + 1, 0] = sol[i * 2 + 1, 0];
             }
             for (int i = L1; i < _listNode.Count; i++)
             {
-                exSol[i * 3 + 0, 0] = fx[(i - L1) * 3 + 0, 0];
-                exSol[i * 3 + 1, 0] = fx[(i - L1) * 3 + 1, 0];
-                exSol[i * 3 + 2, 0] = fx[(i - L1) * 3 + 2, 0];
+                exSol[i * 2 + 0, 0] = fx[(i - L1) * 2 + 0, 0];
+                exSol[i * 2 + 1, 0] = fx[(i - L1) * 2 + 1, 0];
             }
             exSol = shift.Multiply(exSol) as SparseDoubleArray;
-            
+            System.Windows.Forms.MessageBox.Show("4");
+
             foreach (var leaf in _listLeaf)
             {
-                leaf.shellSrf = leaf.forceSrf.Duplicate() as NurbsSurface;
+                //leaf.shellSrf = leaf.forceSrf.Duplicate() as NurbsSurface;
                 for (int i = 0; i < leaf.nU; i++)
                 {
                     for (int j = 0; j < leaf.nV; j++)
                     {
-                        var P = leaf.shellSrf.Points.GetControlPoint(i, j).Location;
+                        var P = leaf.forceSrf.Points.GetControlPoint(i, j).Location;
                         /*if (fix)
                         {
                             leaf.shellSrf.Points.SetControlPoint(i, j, new ControlPoint(P.X, P.Y, exSol[leaf.globalIndex[i + j * leaf.nU] * 3 + 2, 0]));
                         }
                         else*/
                         //{
-                        leaf.shellSrf.Points.SetControlPoint(i, j, new ControlPoint(exSol[leaf.globalIndex[i + j * leaf.nU] * 3 + 0, 0], exSol[leaf.globalIndex[i + j * leaf.nU] * 3 + 1, 0], exSol[leaf.globalIndex[i + j * leaf.nU] * 3 + 2, 0]));
+                        leaf.forceSrf.Points.SetControlPoint(i, j, new ControlPoint(exSol[leaf.globalIndex[i + j * leaf.nU] * 2 + 0, 0], exSol[leaf.globalIndex[i + j * leaf.nU] * 2 + 1, 0], 0));
                         //}
                         //if you don't want to allow movements of x and y coordinates, use the following instead of the above. 
                         //leaf.shellSrf.Points.SetControlPoint(i, j, new ControlPoint(P.X, P.Y, exSol[leaf.globalIndex[i + j * leaf.nU] * 3 + 2, 0]));
