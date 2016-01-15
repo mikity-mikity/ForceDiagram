@@ -36,7 +36,19 @@ namespace mikity.ghComponents
                 {
                     var srf = leaf.forceSrf.Duplicate() as Rhino.Geometry.NurbsSurface;
                     //srf.Transform(zScale);
-                    args.Display.DrawSurface(srf, System.Drawing.Color.Aqua, 4);
+                    args.Display.DrawSurface(srf, System.Drawing.Color.Aqua, 2);
+                    if (leaf.tuples != null)
+                    {
+                        foreach (var tup in leaf.tuples)
+                        {
+                            var P = leaf.formSrf.PointAt(tup.u, tup.v);
+                            var Q = leaf.forceSrf.PointAt(tup.u, tup.v);
+                            Rhino.Geometry.Vector3d D = new Rhino.Geometry.Vector3d(Q.X, Q.Y, Q.Z);
+                            D.Unitize();
+                            D *= 0.3;
+                            args.Display.DrawLine(new Rhino.Geometry.Line(P, P + D), System.Drawing.Color.Magenta);
+                        }
+                    }
                 }
             }
             foreach (var leaf in listLeaf)

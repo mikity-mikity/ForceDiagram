@@ -431,17 +431,16 @@ namespace mikity.ghComponents
                     {
                         for (int j = 0; j < tup.nNode; j++)
                         {
-                            for (int k = 0; k < 2; k++)
-                            {
-                                var d0 = tup.d0;
-                                var d1 = tup.d1;
-                                var G1 = tup.Gi[0];
-                                var G2 = tup.Gi[1];
-                                var val0 = d0[j] * (d1[0][i] * G1[1] + d1[1][i] * G2[1]);
-                                var val1 = -d0[j] * (d1[0][i] * G1[0] + d1[1][i] * G2[0]);
-                                mat[leaf.globalIndex[tup.internalIndex[i]], leaf.globalIndex[tup.internalIndex[j]] * 2 + 0] += val0 * tup.refDv * tup.area;
-                                mat[leaf.globalIndex[tup.internalIndex[i]], leaf.globalIndex[tup.internalIndex[j]] * 2 + 1] += val1 * tup.refDv * tup.area;
-                            }
+                            var d0 = tup.d0;
+                            var d1 = tup.d1;
+                            var G1 = tup.Gi[0];
+                            var G2 = tup.Gi[1];
+                            var val0 = d0[j] * (d1[0][i] * G1[1] + d1[1][i] * G2[1]);
+                            var val1 = -d0[j] * (d1[0][i] * G1[0] + d1[1][i] * G2[0]);
+                            //var val0 = (d1[0][j] * G1[1] + d1[1][j] * G2[1]) * d0[i];
+                            //var val1 = -(d1[0][j] * G1[0] + d1[1][j] * G2[0]) * d0[i];
+                            mat[leaf.globalIndex[tup.internalIndex[i]], leaf.globalIndex[tup.internalIndex[j]] * 2 + 0] += val0 * tup.refDv * tup.area;
+                            mat[leaf.globalIndex[tup.internalIndex[i]], leaf.globalIndex[tup.internalIndex[j]] * 2 + 1] += val1 * tup.refDv * tup.area;
                         }
                     }
                     //}
@@ -458,13 +457,14 @@ namespace mikity.ghComponents
             var D = newMat.GetSliceDeep(0, L1 - 1, L1 * 2, _listNode.Count * 2 - 1);
             var fx = newxx.GetSliceDeep(L1 * 2, _listNode.Count * 2 - 1, 0, 0);
             newF = newF.GetSliceDeep(0, L1 - 1, 0, 0);
-            var solve = new SparseSVD(T);
+            //var solve = new SparseSVD(T);
+            var solve = new QR(DoubleArray.From(T));
             var df = D * fx as SparseDoubleArray;
             var b = DoubleArray.From((-newF - df));
-
+            var sol = solve.LSSolve(b);
             //var sol=solve.Solve(b);
             //var sol = inv * b;
-            var _V = solve.V;
+            /*var _V = solve.V;
             var _U = solve.U;
             var _D = solve.D.CopyDeep();
             for(int i = 0; i < _D.GetLength(0); i++)
@@ -474,6 +474,7 @@ namespace mikity.ghComponents
                 _D[i, i] = t;
             }
             var sol = _V * _D * _U.T*b;
+            */
             var exSol = new SparseDoubleArray(sol.GetLength(0)+fx.GetLength(0),1);
             for (int i = 0; i < L1; i++)
             {
