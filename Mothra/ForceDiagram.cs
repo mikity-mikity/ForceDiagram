@@ -288,7 +288,7 @@ namespace mikity.ghComponents
 
             foreach (var leaf in listLeaf)
             {
-                leaf.NN = globalNN * (leaf.uDdim) -2;
+                leaf.NN = globalNN * (leaf.uDdim)-2;
                 double area = 1d / ((double)leaf.NN) / ((double)leaf.NN);
                 //setup tuples
                 //internal tuples
@@ -347,8 +347,8 @@ namespace mikity.ghComponents
             _listPnt = new List<Point3d>();
             if (!DA.GetDataList(0, _listSrf1)) { return; }
             if (!DA.GetDataList(1, _listSrf2)) { return; }
-            if (!DA.GetDataList(2, _listCrv)) { return; }
-            if (!DA.GetDataList(3, _listPnt)) { return; }
+            if (!DA.GetDataList(2, _listCrv)) { _listCrv = new List<Curve>(); }
+            if (!DA.GetDataList(3, _listPnt)) { _listPnt=new List<Point3d>(); }
             listNode = new List<node>();
             listLeaf = new List<leaf>();
             for (int i = 0; i < _listSrf1.Count; i++)
@@ -390,7 +390,7 @@ namespace mikity.ghComponents
                         bool flag = false;
                         foreach (var node in listNode)
                         {
-                            if (node.compare(P))
+                            if (node.compare2(Q))
                             {
                                 flag = true;
                                 node.N++;
@@ -439,9 +439,9 @@ namespace mikity.ghComponents
                 }
                 foreach (var P in _listPnt)
                 {
-                    if (node.compare(P))
+                    if (node.compare2(P))
                     {
-                        node.formNodeType = node.type.fx;
+                            node.forceNodeType = node.type.fx;
                     }
                 }
             }
