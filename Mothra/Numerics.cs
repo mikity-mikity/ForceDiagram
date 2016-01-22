@@ -153,18 +153,18 @@ namespace mikity.ghComponents
                             for (int i = 0; i < tup.nNode; i++)
                             {
                                 //g1x
-                                int index = leaf.globalIndex[tup.internalIndex[i]] * 2 + 0;
-                                double val = tup.d1[0][i] * G1[0] + tup.d1[1][i] * G2[0];
+                                int index = leaf.globalIndex[tup.internalIndex[i]] * 2 + 1;
+                                double val = tup.d1[0][i] * G1[1] + tup.d1[1][i] * G2[1];
                                 task.putaij(leaf.conOffset + offsetC + 0, index, val);
-                                index = leaf.globalIndex[tup.internalIndex[i]] * 2 + 1;
-                                val = tup.d1[0][i] * G1[1] + tup.d1[1][i] * G2[1];
+                                index = leaf.globalIndex[tup.internalIndex[i]] * 2 + 0;
+                                val = tup.d1[0][i] * G1[0] + tup.d1[1][i] * G2[0];
                                 task.putaij(leaf.conOffset + offsetC + 1, index, val);
                                 index = leaf.globalIndex[tup.internalIndex[i]] * 2 + 0;
                                 val = tup.d1[0][i] * G1[1] + tup.d1[1][i] * G2[1];
-                                task.putaij(leaf.conOffset + offsetC + 2, index, val/2);
+                                //task.putaij(leaf.conOffset + offsetC + 2, index, -val/2);
                                 index = leaf.globalIndex[tup.internalIndex[i]] * 2 + 1;
                                 val = tup.d1[0][i] * G1[0] + tup.d1[1][i] * G2[0];
-                                task.putaij(leaf.conOffset + offsetC + 2, index, val/2);
+                                //task.putaij(leaf.conOffset + offsetC + 2, index, -val/2);
                             }
                             int N11 = leaf.varOffset + offsetV + 0; //variable number
                             int N22 = leaf.varOffset + offsetV + 1;
