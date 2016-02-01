@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Minilla3D.Elements
+namespace Minilla3D2.Elements
 {
     public class nurbsCurve:element
     {

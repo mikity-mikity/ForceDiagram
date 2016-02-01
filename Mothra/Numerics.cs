@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using ShoNS.Array;
 using Rhino.Geometry;
+using Accord.Math;
 namespace mikity.ghComponents
 {
     
@@ -24,9 +25,28 @@ namespace mikity.ghComponents
     
     public partial class ForceDiagram : Grasshopper.Kernel.GH_Component
     {
+        public void init(List<leaf> _listLeaf)
+        {
+            foreach (var leaf in _listLeaf)
+            {
+                double[,] X;
+                double[,] _X;
+                X = new double[leaf.nU * leaf.nV, 3];
+                _X = new double[leaf.nU * leaf.nV, 3];
+                Nurbs2x(leaf.formSrf, X);
+                Nurbs2x(leaf.forceSrf, _X);
+                leaf.myMasonry.setupRefNodesFromList(X);
+                leaf.myMasonry.setupNodesFromList(_X);
+                foreach (var tup in leaf.tuples)
+                {
+                    leaf.myMasonry.elemList[tup.index].precompute(tup);
+                }
+            }
 
+        }
         public void computeForceDiagram(List<leaf> _listLeaf, List<node> _listNode)
-        {           //variable settings
+        {
+            //variable settings
             int numvar = _listNode.Count * 2;
             int numcon = 0;
             double infinity = 0;
@@ -36,8 +56,7 @@ namespace mikity.ghComponents
             {
                 leaf.conOffset = numcon;
                 leaf.varOffset = numvar;
-                numvar += leaf.tuples.Length * 4; //X_x,X_y,Y_y
-                numcon += leaf.tuples.Length * 4; //X_x,X_y,Y_y
+                numcon += leaf.tuples.Length * 1; //grad(detF)dx>-detF
             }
             mosek.boundkey[] bkx = new mosek.boundkey[numvar];
             double[] blx = new double[numvar];
@@ -47,11 +66,11 @@ namespace mikity.ghComponents
                 if (_listNode[i].forceNodeType== node.type.fx)
                 {
                     bkx[i * 2 + 0] = mosek.boundkey.fx;
-                    blx[i * 2 + 0] = _listNode[i].X;
-                    bux[i * 2 + 0] = _listNode[i].X;
+                    blx[i * 2 + 0] = 0;// _listNode[i].X;
+                    bux[i * 2 + 0] = 0;//_listNode[i].X;
                     bkx[i * 2 + 1] = mosek.boundkey.fx;
-                    blx[i * 2 + 1] = _listNode[i].Y;
-                    bux[i * 2 + 1] = _listNode[i].Y;
+                    blx[i * 2 + 1] = 0;//_listNode[i].Y;
+                    bux[i * 2 + 1] = 0;//_listNode[i].Y;
                 }
                 else
                 {
@@ -63,182 +82,175 @@ namespace mikity.ghComponents
                     bux[i * 2 + 1] = infinity;
                 }
             }
-            foreach (var leaf in _listLeaf)
+            for (int t = 0; t < 10; t++)
             {
-                for (int i = 0; i < leaf.tuples.Length; i++)
+                init(_listLeaf);
+                double[] x = new double[_listNode.Count * 2];
+                foreach (var leaf in _listLeaf)
                 {
-                    bkx[leaf.varOffset + i * 3 + 0] = mosek.boundkey.fr;
-                    blx[leaf.varOffset + i * 3 + 0] = 0;
-                    bux[leaf.varOffset + i * 3 + 0] = infinity;
-                    bkx[leaf.varOffset + i * 3 + 1] = mosek.boundkey.fr;
-                    blx[leaf.varOffset + i * 3 + 1] = 0;
-                    bux[leaf.varOffset + i * 3 + 1] = infinity;
-                    bkx[leaf.varOffset + i * 3 + 2] = mosek.boundkey.fr;
-                    blx[leaf.varOffset + i * 3 + 2] = 0;
-                    bux[leaf.varOffset + i * 3 + 2] = infinity;
-                    bkx[leaf.varOffset + i * 4 + 3] = mosek.boundkey.fr;
-                    blx[leaf.varOffset + i * 4 + 3] = 0;
-                    bux[leaf.varOffset + i * 4 + 3] = infinity;
-                }
-            }
-            using (mosek.Env env = new mosek.Env())
-            {
-                // Create a task object.
-                using (mosek.Task task = new mosek.Task(env, 0, 0))
-                {
-                    // Directs the log task stream to the user specified
-                    // method msgclass.streamCB
-                    task.set_Stream(mosek.streamtype.log, new msgclass(""));
-                    task.appendcons(numcon);
-                    task.appendvars(numvar);
-                    for (int j = 0; j < numvar; ++j)
+                    for (int j = 0; j < leaf.nV; j++)
                     {
-                        task.putvarbound(j, bkx[j], blx[j], bux[j]);
-                    }
-                    ShoNS.Array.SparseDoubleArray mat = new SparseDoubleArray(_listNode.Count, _listNode.Count * 2);
-                    /*
-                    foreach (var leaf in _listLeaf)
-                    {
-                        foreach (var tup in leaf.tuples)
+                        for (int i = 0; i < leaf.nU; i++)
                         {
-                            for(int i = 0; i < tup.nNode; i++)
+                            int indexX = leaf.globalIndex[i + j * leaf.nU] * 2 + 0;
+                            int indexY = leaf.globalIndex[i + j * leaf.nU] * 2 + 1;
+                            var Q = leaf.forceSrf.Points.GetControlPoint(i, j);
+                            x[indexX] = Q.Location.X;
+                            x[indexY] = Q.Location.Y;
+                        }
+                    }
+
+                }
+                using (mosek.Env env = new mosek.Env())
+                {
+                    // Create a task object.
+                    using (mosek.Task task = new mosek.Task(env, 0, 0))
+                    {
+                        // Directs the log task stream to the user specified
+                        // method msgclass.streamCB
+                        task.set_Stream(mosek.streamtype.log, new msgclass(""));
+                        task.appendcons(numcon);
+                        task.appendvars(numvar);
+                        for (int j = 0; j < numvar; ++j)
+                        {
+                            task.putvarbound(j, bkx[j], blx[j], bux[j]);
+                        }
+                        
+                        ShoNS.Array.SparseDoubleArray mat = new SparseDoubleArray(_listNode.Count, _listNode.Count * 2);
+                        
+                        
+                        foreach (var leaf in _listLeaf)
+                        {
+                            foreach (var tup in leaf.tuples)
                             {
-                                int indexI = leaf.globalIndex[tup.internalIndex[i]];
-                                for (int j = 0; j < tup.nNode; j++)
+                                for(int i = 0; i < tup.nNode; i++)
                                 {
-                                    int indexJx = leaf.globalIndex[tup.internalIndex[j]] * 2 + 0;
-                                    int indexJy = leaf.globalIndex[tup.internalIndex[j]] * 2 + 1;
-                                    var d0 = tup.d0;
-                                    var d1 = tup.d1;
-                                    var G1 = tup.Gi[0];
-                                    var G2 = tup.Gi[1];
-                                    var val0 = (d0[j] * d1[0][i] * G1[1] + d0[j] * d1[1][i] * G2[1]) * tup.refDv * tup.area;
-                                    var val1 = -(d0[j] * d1[0][i] * G1[0] + d0[j] * d1[1][i] * G2[0]) * tup.refDv * tup.area;
-                                    mat[indexI, indexJx] += val0;
-                                    mat[indexI, indexJy] += val1;
+                                    int indexI = leaf.globalIndex[tup.internalIndex[i]];
+                                    for (int j = 0; j < tup.nNode; j++)
+                                    {
+                                        int indexJx = leaf.globalIndex[tup.internalIndex[j]] * 2 + 0;
+                                        int indexJy = leaf.globalIndex[tup.internalIndex[j]] * 2 + 1;
+                                        var d0 = tup.d0;
+                                        var d1 = tup.d1;
+                                        var G1 = tup.refGi[0];
+                                        var G2 = tup.refGi[1];
+                                        var val0 = (d0[j] * d1[0][i] * G1[1] + d0[j] * d1[1][i] * G2[1]) * tup.refDv * tup.area;
+                                        var val1 = -(d0[j] * d1[0][i] * G1[0] + d0[j] * d1[1][i] * G2[0]) * tup.refDv * tup.area;
+                                        mat[indexI, indexJx] += val0;
+                                        mat[indexI, indexJy] += val1;
+                                    }
+                                }
+                            }
+                        }
+                        
+                        for (int i = 0; i < _listNode.Count; i++)
+                        {
+                            var val = 0d;
+                            for (int j = 0; j < _listNode.Count * 2; j++)
+                            {
+                                val += mat[i, j] * x[j];
+                            }
+                            task.putconbound(i, mosek.boundkey.fx, -val, -val);
+                            for (int j = 0; j < _listNode.Count*2; j++)
+                            {
+                                task.putaij(i, j, mat[i, j]);
+                            }
+                        }
+                        
+                        foreach (var leaf in _listLeaf)
+                        {
+                            int offsetC = 0;
+                            foreach (var tup in leaf.tuples)
+                            {
+                                //compute current detF
+                                //x,y; referece, X,Y; forceDiagram
+                                var FXx = tup.gi[0][0] * tup.refGi[0][0] + tup.gi[1][0] * tup.refGi[1][0];
+                                var FYy = tup.gi[0][1] * tup.refGi[0][1] + tup.gi[1][1] * tup.refGi[1][1];
+                                var FXy = tup.gi[0][0] * tup.refGi[0][1] + tup.gi[1][0] * tup.refGi[1][1];
+                                var FYx = tup.gi[0][1] * tup.refGi[0][0] + tup.gi[1][1] * tup.refGi[1][0];
+                                var detF = FXx * FYy- FXy * FYx;
+                                task.putconbound(leaf.conOffset + offsetC, mosek.boundkey.lo, -detF,infinity);
+                                var G1 = tup.refGi[0];
+                                var G2 = tup.refGi[1];
+                                for (int i = 0; i < tup.nNode; i++)
+                                {
+                                    int indexX = leaf.globalIndex[tup.internalIndex[i]] * 2 + 0;
+                                    int indexY = leaf.globalIndex[tup.internalIndex[i]] * 2 + 1;
+
+                                    double val1 = (tup.d1[0][i] * G1[0] + tup.d1[1][i] * G2[0]) * FYy;
+                                    double val2 = (tup.d1[0][i] * G1[1] + tup.d1[1][i] * G2[1]) * FYx;
+
+                                    task.putaij(leaf.conOffset + offsetC, indexX, -val2);
+                                    val1 = (tup.d1[0][i] * G1[1] + tup.d1[1][i] * G2[1]) * FXx;
+                                    val2 = (tup.d1[0][i] * G1[0] + tup.d1[1][i] * G2[0]) * FXy;
+                                    task.putaij(leaf.conOffset + offsetC, indexY, val1- val2);
+                                }
+                                offsetC ++;
+                            }
+                        }
+                        for (int i = 0; i < _listNode.Count; i++)
+                        {
+                            task.putqobjij(i * 2 + 0, i * 2 + 0, 1);
+                            task.putqobjij(i * 2 + 1, i * 2 + 1, 1);
+                        }
+                        task.optimize();
+                        // Print a summary containing information
+                        //   about the solution for debugging purposes
+                        task.solutionsummary(mosek.streamtype.msg);
+
+                        mosek.solsta solsta;
+                        task.getsolsta(mosek.soltype.itr, out solsta);
+
+                        double[] dx = new double[numvar];
+
+                        task.getxx(mosek.soltype.itr, // Basic solution.     
+                                        dx);
+
+                        switch (solsta)
+                        {
+                            case mosek.solsta.optimal:
+                                System.Windows.Forms.MessageBox.Show("Optimal primal solution\n");
+                                break;
+                            case mosek.solsta.near_optimal:
+                                System.Windows.Forms.MessageBox.Show("Near Optimal primal solution\n");
+                                break;
+                            case mosek.solsta.dual_infeas_cer:
+                                System.Windows.Forms.MessageBox.Show("Primal or dual infeasibility.\n");
+                                break;
+                            case mosek.solsta.prim_infeas_cer:
+                                System.Windows.Forms.MessageBox.Show("Primal or dual infeasibility.\n");
+                                break;
+                            case mosek.solsta.near_dual_infeas_cer:
+                                System.Windows.Forms.MessageBox.Show("Primal or dual infeasibility.\n");
+                                break;
+                            case mosek.solsta.near_prim_infeas_cer:
+                                System.Windows.Forms.MessageBox.Show("Primal or dual infeasibility.\n");
+                                break;
+                            case mosek.solsta.unknown:
+                                System.Windows.Forms.MessageBox.Show("Unknown solution status\n");
+                                break;
+                            default:
+                                System.Windows.Forms.MessageBox.Show("Other solution status\n");
+                                break;
+
+                        }
+                        foreach (var leaf in _listLeaf)
+                        {
+                            for (int j = 0; j < leaf.nV; j++)
+                            {
+                                for (int i = 0; i < leaf.nU; i++)
+                                {
+                                    int indexX = leaf.globalIndex[i + j * leaf.nU] * 2 + 0;
+                                    int indexY = leaf.globalIndex[i + j * leaf.nU] * 2 + 1;
+                                    var Q = leaf.forceSrf.Points.GetControlPoint(i, j);
+                                    var P = new Point3d(Q.Location.X + dx[indexX] * 1d, Q.Location.Y + dx[indexY] * 1d, 0);
+                                    leaf.forceSrf.Points.SetControlPoint(i, j, P);
                                 }
                             }
                         }
                     }
-                    for (int i = 0; i < _listNode.Count; i++)
-                    {
-                        task.putconbound(i, mosek.boundkey.fx, 0, 0);
-                        for (int j = 0; j < _listNode.Count*2; j++)
-                        {
-                            task.putaij(i, j, mat[i, j]);
-                        }
-                    }
-                    */
-                    int[] csub = new int[3];
-                    foreach(var leaf in _listLeaf)
-                    //for(int t=2;t<3;t+=2)
-                    {
-                        //var leaf = _listLeaf[t];
-                        int offsetC = 0;
-                        int offsetV = 0;
-                        foreach (var tup in leaf.tuples)
-                        //for(int k=0;k<leaf.tuples.Length;k+=5)
-                        {
-                            //var tup = leaf.tuples[k];
-                            var G1 = tup.Gi[0];
-                            var G2 = tup.Gi[1];
-                            task.putconbound(leaf.conOffset + offsetC + 0, mosek.boundkey.fx, 0, 0);
-                            task.putconbound(leaf.conOffset + offsetC + 1, mosek.boundkey.fx, 0, 0);
-                            task.putconbound(leaf.conOffset + offsetC + 2, mosek.boundkey.fx, 0, 0);
-                            task.putconbound(leaf.conOffset + offsetC + 3, mosek.boundkey.fx, 0, 0);
-                            task.putaij(leaf.conOffset + offsetC + 0, leaf.varOffset + offsetV + 0, -1);
-                            task.putaij(leaf.conOffset + offsetC + 1, leaf.varOffset + offsetV + 1, -1);
-                            task.putaij(leaf.conOffset + offsetC + 2, leaf.varOffset + offsetV + 2, -1);
-                            task.putaij(leaf.conOffset + offsetC + 3, leaf.varOffset + offsetV + 3, -1);
-                            for (int i = 0; i < tup.nNode; i++)
-                            {
-                                //g1x
-                                int index = leaf.globalIndex[tup.internalIndex[i]] * 2 + 0;
-                                double val = tup.d1[0][i] * G1[0] + tup.d1[1][i] * G2[0];
-                                task.putaij(leaf.conOffset + offsetC + 0, index, val);
-                                index = leaf.globalIndex[tup.internalIndex[i]] * 2 + 1;
-                                val = tup.d1[0][i] * G1[1] + tup.d1[1][i] * G2[1];
-                                task.putaij(leaf.conOffset + offsetC + 1, index, val);
-                                index = leaf.globalIndex[tup.internalIndex[i]] * 2 + 0;
-                                val = tup.d1[0][i] * G1[1] + tup.d1[1][i] * G2[1];
-                                task.putaij(leaf.conOffset + offsetC + 2, index, val/2);
-                                index = leaf.globalIndex[tup.internalIndex[i]] * 2 + 1;
-                                val = tup.d1[0][i] * G1[0] + tup.d1[1][i] * G2[0];
-                                task.putaij(leaf.conOffset + offsetC + 2, index, val/2);
-                            }
-                            int N11 = leaf.varOffset + offsetV + 0; //variable number
-                            int N22 = leaf.varOffset + offsetV + 1;
-                            int N12 = leaf.varOffset + offsetV + 2;
-                            int N21 = leaf.varOffset + offsetV + 3;
-
-                            csub[0] = N11;
-                            csub[1] = N22;
-                            csub[2] = N12;
-                            task.appendcone(mosek.conetype.rquad,
-                                            0.0, // For future use only, can be set to 0.0 
-                                            csub);
-                            offsetC += 4;
-                            offsetV += 4;
-                        }
-                    }
-                    
-                    task.optimize();
-                    // Print a summary containing information
-                    //   about the solution for debugging purposes
-                    task.solutionsummary(mosek.streamtype.msg);
-
-                    mosek.solsta solsta;
-                    task.getsolsta(mosek.soltype.itr, out solsta);
-
-                    double[] xx = new double[numvar];
-
-                    task.getxx(mosek.soltype.itr, // Basic solution.     
-                                    xx);
-
-                    switch (solsta)
-                    {
-                        case mosek.solsta.optimal:
-                            System.Windows.Forms.MessageBox.Show("Optimal primal solution\n");
-                            break;
-                        case mosek.solsta.near_optimal:
-                            System.Windows.Forms.MessageBox.Show("Near Optimal primal solution\n");
-                            break;
-                        case mosek.solsta.dual_infeas_cer:
-                            System.Windows.Forms.MessageBox.Show("Primal or dual infeasibility.\n");
-                            break;
-                        case mosek.solsta.prim_infeas_cer:
-                            System.Windows.Forms.MessageBox.Show("Primal or dual infeasibility.\n");
-                            break;
-                        case mosek.solsta.near_dual_infeas_cer:
-                            System.Windows.Forms.MessageBox.Show("Primal or dual infeasibility.\n");
-                            break;
-                        case mosek.solsta.near_prim_infeas_cer:
-                            System.Windows.Forms.MessageBox.Show("Primal or dual infeasibility.\n");
-                            break;
-                        case mosek.solsta.unknown:
-                            System.Windows.Forms.MessageBox.Show("Unknown solution status\n");
-                            break;
-                        default:
-                            System.Windows.Forms.MessageBox.Show("Other solution status\n");
-                            break;
-
-                    }
-                    foreach(var leaf in _listLeaf)
-                    {
-                        for (int j = 0; j < leaf.nV; j++)
-                        {
-                            for (int i = 0; i < leaf.nU; i++)
-                            {
-                                int indexX = leaf.globalIndex[i + j * leaf.nU] * 2 + 0;
-                                int indexY = leaf.globalIndex[i + j * leaf.nU] * 2 + 1;
-                                var P = new Point3d(xx[indexX], xx[indexY], 0);
-                                leaf.forceSrf.Points.SetControlPoint(i, j, P);
-                            }
-                        }
-
-                    }
-
                 }
+                ExpirePreview(true);
             }
         }
         /*         

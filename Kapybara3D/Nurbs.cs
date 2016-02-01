@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Minilla3D.Elements
+namespace Minilla3D2.Elements
 {
     public class nurbsElement:element
     {
@@ -24,19 +24,19 @@ namespace Minilla3D.Elements
             public double[,][] d2;
             public double[][] d1;
             public double[] d0;
-            public double x, y, z;
-            public double[][] gi;
-            public double[][] Gi;
-            public double[,] gij;
-            public double[,] Gij;
-            public double[][] gi2;
+            public double x, y, z,refx,refy,refz;
+            public double[][] gi,refgi;
+            public double[][] Gi,refGi;
+            public double[,] gij,refgij;
+            public double[,] Gij,refGij;
+            /*public double[][] gi2;
             public double[][] Gi2;
             public double[,] gij2;
-            public double[,] Gij2;
+            public double[,] Gij2;*/
             public double[, ,] Gammaijk;
             public double[,][] second;
-            public double[, ,] Gammaijk2;
-            public double[,][] second2;
+            //public double[, ,] Gammaijk2;
+            //public double[,][] second2;
             public double[,] shape;
             public double[, ,] C;
             public double[, , ,] B;
@@ -188,14 +188,19 @@ namespace Minilla3D.Elements
                 Gi = new double[2][] { new double[3], new double[3] };
                 gij = new double[2, 2];
                 Gij = new double[2, 2];
-                gi2 = new double[2][] { new double[3], new double[3] };
+                refgi = new double[2][] { new double[3], new double[3] };
+                refGi = new double[2][] { new double[3], new double[3] };
+                refgij = new double[2, 2];
+                refGij = new double[2, 2];
+                /*gi2 = new double[2][] { new double[3], new double[3] };
                 Gi2 = new double[2][] { new double[3], new double[3] };
                 gij2 = new double[2, 2];
                 Gij2 = new double[2, 2];
+                */
                 Gammaijk = new double[2, 2, 2];
                 second = new double[2, 2][] { { new double[3], new double[3] }, { new double[3], new double[3] } };
-                Gammaijk2 = new double[2, 2, 2];
-                second2 = new double[2, 2][] { { new double[3], new double[3] }, { new double[3], new double[3] } };
+                //Gammaijk2 = new double[2, 2, 2];
+                //second2 = new double[2, 2][] { { new double[3], new double[3] }, { new double[3], new double[3] } };
                 H = new double[2, 2];
                 SPK = new double[2, 2];
                 eigenVectors = new double[2][] { new double[3], new double[3] };
@@ -559,6 +564,16 @@ namespace Minilla3D.Elements
             tup.x = X;
             tup.y = Y;
             tup.z = Z;
+            X = 0;Y = 0;Z = 0;
+            for (int i = 0; i < nDV; i++)
+            {
+                X += tup.shape[0, i] * refNode[i];
+                Y += tup.shape[1, i] * refNode[i];
+                Z += tup.shape[2, i] * refNode[i];
+            }
+            tup.refx = X;
+            tup.refy = Y;
+            tup.refz = Z;
             //covariant base vectors
             for (int n = 0; n < elemDim; n++)
             {
@@ -574,36 +589,54 @@ namespace Minilla3D.Elements
             }
             for (int n = 0; n < elemDim; n++)
             {
+                double fx = 0, fy = 0;
+                for (int i = 0; i < nDV; i++)
+                {
+                    fx += tup.C[n, 0, i] * refNode[i];
+                    fy += tup.C[n, 1, i] * refNode[i];
+                }
+                tup.refgi[n][0] = fx;
+                tup.refgi[n][1] = fy;
+                tup.refgi[n][2] = 0;
+            }
+            for (int n = 0; n < elemDim; n++)
+            {
                 for (int m = 0; m < elemDim; m++)
                 {
                     tup.gij[n, m] = tup.gi[n][0] * tup.gi[m][0] + tup.gi[n][1] * tup.gi[m][1] + tup.gi[n][2] * tup.gi[m][2];
+                    tup.refgij[n, m] = tup.refgi[n][0] * tup.refgi[m][0] + tup.refgi[n][1] * tup.refgi[m][1] + tup.refgi[n][2] * tup.refgi[m][2];
                 }
             }
             if (elemDim == 1)
             {
                 _inv1(tup.gij, tup.Gij);
+                _inv1(tup.refgij, tup.refGij);
             }
             else if (elemDim == 2)
             {
                 _inv2(tup.gij, tup.Gij);
+                _inv2(tup.refgij, tup.refGij);
             }
             else if (elemDim == 3)
             {
                 _inv3(tup.gij, tup.Gij);
+                _inv3(tup.refgij, tup.refGij);
             }
             if (elemDim == 1)
             {
                 tup.dv = Math.Sqrt(_det1(tup.gij));
+                tup.refDv = Math.Sqrt(_det1(tup.refgij));
             }
             else if (elemDim == 2)
             {
                 tup.dv = Math.Sqrt(_det2(tup.gij));
+                tup.refDv = Math.Sqrt(_det2(tup.refgij));
             }
             else if (elemDim == 3)
             {
                 tup.dv = Math.Sqrt(_det3(tup.gij));
+                tup.refDv = Math.Sqrt(_det3(tup.refgij));
             }
-            tup.refDv = tup.dv;
 
             //contravatiant base vectors
             for (int n = 0; n < elemDim; n++)
@@ -617,6 +650,18 @@ namespace Minilla3D.Elements
                 tup.Gi[n][0] = Fx;
                 tup.Gi[n][1] = Fy;
                 tup.Gi[n][2] = 0;
+            }
+            for (int n = 0; n < elemDim; n++)
+            {
+                double Fx = 0, Fy = 0;
+                for (int m = 0; m < elemDim; m++)
+                {
+                    Fx += tup.refgi[m][0] * tup.refGij[m, n];
+                    Fy += tup.refgi[m][1] * tup.refGij[m, n];
+                }
+                tup.refGi[n][0] = Fx;
+                tup.refGi[n][1] = Fy;
+                tup.refGi[n][2] = 0;
             }
             //Connection coefficients
             for (int n = 0; n < elemDim; n++)
@@ -1199,7 +1244,7 @@ namespace Minilla3D.Elements
 				}
 			}
             //local coordinates for integrating points on border
-            List<Minilla3D.Elements.integratingPoint> allIntP = new List<integratingPoint>();
+            List<Minilla3D2.Elements.integratingPoint> allIntP = new List<integratingPoint>();
             allIntP.AddRange(intP);
             allIntP.AddRange(bIntP);
             int nAllIntP = nIntPoint + nBIntPoint;

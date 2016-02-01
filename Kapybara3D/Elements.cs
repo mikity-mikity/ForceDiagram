@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Minilla3D.Elements
+namespace Minilla3D2.Elements
 {
     public class element
 	{
@@ -14,9 +14,9 @@ namespace Minilla3D.Elements
         type typeOfStress;
         protected const int __DIM=3;
         public int nIntPoint,nBIntPoint,nNode,elemDim,nDV;                
-		public Minilla3D.Elements.integratingPoint[] intP;     //Integrating points
-        public Minilla3D.Elements.integratingPoint[] bIntP;     //Integrating Points on border
-        protected double[] node;							        //Nodal coordinate (global)
+		public Minilla3D2.Elements.integratingPoint[] intP;     //Integrating points
+        public Minilla3D2.Elements.integratingPoint[] bIntP;     //Integrating Points on border
+        protected double[] node,refNode;							        //Nodal coordinate (global)
         protected double[] phi;
         protected int[] index;                                    //indeces of the nodes
         double[] gradient;                              //internal force(equivalent nodal force of stress field)
@@ -56,7 +56,8 @@ namespace Minilla3D.Elements
             {
                 intP[i]=new integratingPoint(nNode,elemDim);
             }
-            node=new double[nDV];
+            node = new double[nDV];
+            refNode = new double[nDV];
             phi = new double[nNode];
             index=new int[nNode];
 		    gradient=new double[nDV];
@@ -122,8 +123,18 @@ namespace Minilla3D.Elements
                 }
             }
         }
+        public void setupRefNodesFromList(double[,] x)
+        {
+            for (int i = 0; i < nNode; i++)
+            {
+                for (int j = 0; j < __DIM; j++)
+                {
+                    refNode[i * __DIM + j] = x[index[i], j];
+                }
+            }
+        }
 
-		public double Volume{
+        public double Volume{
 	        get;
             protected set;
         }
@@ -193,7 +204,7 @@ namespace Minilla3D.Elements
             return bIntP[i].globalCoord;
         }
         public void computeGlobalCoord()
-		{
+        {
             for (int i = 0; i < nIntPoint; i++)
             {
                 intP[i].computeGlobalCoord(node);
@@ -203,7 +214,7 @@ namespace Minilla3D.Elements
                 bIntP[i].computeGlobalCoord(node);
             }
         }
-		public void computeMetric(){
+        public void computeMetric(){
 			for(int i=0;i<nIntPoint;i++)
 			{
 				intP[i].computeMetric(node);

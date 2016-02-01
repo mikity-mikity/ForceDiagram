@@ -59,7 +59,7 @@ namespace mikity.ghComponents
             {
                 vKnot[i + leaf.nV + 1] = leaf.nV - vDdim;
             }
-            leaf.myMasonry = new Minilla3D.Objects.masonry();
+            leaf.myMasonry = new Minilla3D2.Objects.masonry();
             for (int j = 1; j < leaf.nV - vDdim + 1; j++)
             {
                 for (int i = 1; i < leaf.nU - uDdim + 1; i++)
@@ -72,7 +72,7 @@ namespace mikity.ghComponents
                             index[k * uDim + l] = (j - 1 + k) * leaf.nU + i - 1 + l;
                         }
                     }
-                    leaf.myMasonry.elemList.Add(new Minilla3D.Elements.nurbsElement(uDim, vDim, index, i, j, uKnot, vKnot));
+                    leaf.myMasonry.elemList.Add(new Minilla3D2.Elements.nurbsElement(uDim, vDim, index, i, j, uKnot, vKnot));
                 }
             }
         }

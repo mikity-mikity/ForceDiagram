@@ -154,7 +154,7 @@ namespace mikity.ghComponents
             public int varOffset;
             public int conOffset;
             //public range range;
-            public Minilla3D.Objects.masonry myMasonry;
+            public Minilla3D2.Objects.masonry myMasonry;
             public NurbsSurface formSrf;
             public NurbsSurface forceSrf;
             public NurbsSurface shellSrf;
@@ -172,7 +172,7 @@ namespace mikity.ghComponents
             public int[] globalIndex;
         }
 
-        public class tuple_ex:Minilla3D.Elements.nurbsElement.tuple
+        public class tuple_ex:Minilla3D2.Elements.nurbsElement.tuple
         {
             public tuple_ex(/*int _N, */double _ou, double _ov, double _u, double _v, int _index, double _loU, double _loV, double _area)
                 : base(/*_N,*/ _ou, _ov, _u, _v, _index, _loU, _loV, _area)
@@ -180,7 +180,7 @@ namespace mikity.ghComponents
             
             public void init(NurbsSurface S,double scaleU,double scaleV)
             {
-                Point3d P;
+                /*Point3d P;
                 Vector3d[] V;
                 S.Evaluate(u, v, 1, out P, out V);
                 x = P.X;
@@ -226,7 +226,7 @@ namespace mikity.ghComponents
                 Gammaijk2[1, 0, 0] = second2[1, 0][0] * Gi2[0][0] + second2[1, 0][1] * Gi2[0][1];
                 Gammaijk2[1, 0, 1] = second2[1, 0][0] * Gi2[1][0] + second2[1, 0][1] * Gi2[1][1];
                 Gammaijk2[1, 1, 0] = second2[1, 1][0] * Gi2[0][0] + second2[1, 1][1] * Gi2[0][1];
-                Gammaijk2[1, 1, 1] = second2[1, 1][0] * Gi2[1][0] + second2[1, 1][1] * Gi2[1][1];
+                Gammaijk2[1, 1, 1] = second2[1, 1][0] * Gi2[1][0] + second2[1, 1][1] * Gi2[1][1];*/
             }
         }
         //ControlBox myControlBox = new ControlBox();
@@ -313,23 +313,6 @@ namespace mikity.ghComponents
                     }
                 }
                 createNurbsElements(leaf);
-                double[,] x;
-                double[,] _x;
-                x = new double[leaf.nU * leaf.nV, 3];
-                _x = new double[leaf.nU * leaf.nV, 3];
-                Nurbs2x(leaf.formSrf, x);
-                Nurbs2x(leaf.forceSrf, _x);
-                leaf.myMasonry.setupNodesFromList(x);
-                leaf.myMasonry.computeGlobalCoord();
-                foreach (var e in leaf.myMasonry.elemList)
-                {
-                    e.precompute();
-                    e.computeBaseVectors();
-                }
-                foreach (var tup in leaf.tuples)
-                {
-                    leaf.myMasonry.elemList[tup.index].precompute(tup);
-                }
             }
             System.Windows.Forms.MessageBox.Show("G");
             computeForceDiagram(listLeaf, listNode);

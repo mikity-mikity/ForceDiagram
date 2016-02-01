@@ -8,7 +8,7 @@ using ShoNS.Array;
 using System.IO;
 using System.Reflection;
 //using System.Reactive.Linq;
-namespace Minilla3D
+namespace Minilla3D2
 {
 	namespace Objects{
         
@@ -17,8 +17,8 @@ namespace Minilla3D
 		}
         public class arch:iObject
         {
-            public List<Minilla3D.Elements.nurbsCurve> elemList = new List<Elements.nurbsCurve>();
-            public void Add(Minilla3D.Elements.nurbsCurve e)
+            public List<Minilla3D2.Elements.nurbsCurve> elemList = new List<Elements.nurbsCurve>();
+            public void Add(Minilla3D2.Elements.nurbsCurve e)
             {
                 elemList.Add(e);
             }
@@ -46,15 +46,15 @@ namespace Minilla3D
             }
         }
         public class masonry:iObject{
-            public List<Minilla3D.Elements.nurbsElement> elemList = new List<Elements.nurbsElement>();
+            public List<Minilla3D2.Elements.nurbsElement> elemList = new List<Elements.nurbsElement>();
             public void memoryMetric()
             {
-                foreach (Minilla3D.Elements.element e in elemList)
+                foreach (Minilla3D2.Elements.element e in elemList)
                 {
                     e.memoryMetric();       //metric->refMetric,invMetric->invRefMetric,dv->refDv
                 }
             }
-            public void Add(Minilla3D.Elements.nurbsElement e)
+            public void Add(Minilla3D2.Elements.nurbsElement e)
             {
                 elemList.Add(e);
             }
@@ -81,6 +81,12 @@ namespace Minilla3D
             {
                 Parallel.ForEach(elemList, (e) =>
                     e.setupNodesFromList(x)
+                    );
+            }
+            public void setupRefNodesFromList(double[,] x)
+            {
+                Parallel.ForEach(elemList, (e) =>
+                    e.setupRefNodesFromList(x)
                     );
             }
             public void setupAiryPotentialFromList(double[] x)
